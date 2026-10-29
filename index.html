@@ -102,6 +102,7 @@ h1, h2, h3 { text-wrap: balance; }
 .runbtn:hover { background: var(--tint); }
 .runbtn .i { width: 16px; height: 16px; }
 .hint { margin: 0; font-size: 14px; color: var(--ink-2); }
+.vctx { margin: -4px 0 0; font-size: 14.5px; color: var(--ink-2); }
 .screen { min-width: 0; }
 .sign { background: var(--face); border-radius: 6px; box-shadow: 0 0 0 1px var(--rule), inset 0 0 0 4px var(--face), inset 0 0 0 5.5px var(--ink); }
 .caption { position: relative; padding: 15px 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; overflow: hidden; }
@@ -282,10 +283,15 @@ tr.new td { background: var(--blue-face); }
 .clip p { margin: 0; max-width: 60ch; }
 
 /* #shot-stepN: the screen alone, for deck screenshots */
-.shotmode .top, .shotmode .guide, .shotmode .viewbar, .shotmode .caption, .shotmode .foot { display: none; }
+.shotmode .top, .shotmode .guide, .shotmode .viewbar, .shotmode .vctx, .shotmode .caption, .shotmode .foot { display: none; }
 .shotmode .stage { display: block; }
 .shotmode .wrap { max-width: none; padding: 14px; }
 .shotmode .phone { box-shadow: none; }
+/* #pair-stepN: only the van's front camera beside the gate camera */
+.pairmode .cgrid { display: block; background: none; }
+.pairmode .cgrid > :not(.main), .pairmode .mq, .pairmode .cbar, .pairmode .vstat { display: none; }
+.pairmode .cams.main { padding: 0; background: none; }
+.pairmode .console { padding: 0; box-shadow: none; background: none; }
 
 /* ---------- motion ---------- */
 ::view-transition-group(root) { animation-duration: .32s; animation-timing-function: var(--ease-out); }
@@ -313,8 +319,10 @@ tr.new td { background: var(--blue-face); }
   .hotsign ul { grid-auto-flow: column; gap: 4px 18px; }
 }
 @media (max-width: 900px) {
-  .stage { grid-template-columns: minmax(0, 1fr); }
-  .demo { order: -1; }
+  .stage { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .guide { display: contents; } /* phones: the lead sits above the console, the walk-through below it */
+  .lead { order: -2; }
+  .demo { order: -1; margin-bottom: 14px; }
 }
 @media (max-width: 720px) {
   .cgrid { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "main" "req" "more" "queue"; background: none; }
@@ -381,6 +389,7 @@ tr.new td { background: var(--blue-face); }
         <div class="seg views" role="group" id="seg"></div>
         <div class="runctl"><p class="hint" id="hint" hidden></p><button class="runbtn" data-act="play" id="playMain"></button></div>
       </div>
+      <p class="vctx" id="vctx"></p>
       <div class="screen" id="screen"></div>
       <div class="caption sign">
         <i class="meter" id="meter"></i>
@@ -403,7 +412,10 @@ const $ = (s) => document.querySelector(s);
 const T = {
   en: {
     sub: "Interactive prototype · simulated run", team: "Team Bob · Asia Pacific University · Cyberjaya 5G Challenge 2026, Track 2",
-    lead: "When a driverless van is unsure, it stops and asks for help. The operator in the control room sees the van's four cameras and, at busy hotspots, a roadside camera. The operator decides; the operator never drives the van.",
+    lead: "Since 20 Oct 2026, ALS has been trialling a fully driverless delivery van on Cyberjaya's roads. Vans like it stop and ask a remote operator for help when they are unsure. MATA KEDUA gives that operator the van's four cameras and, at busy hotspots, a roadside camera. The operator decides; the operator never drives the van.",
+    ctx: { op: "The control-room screen: the van's question, its cameras, the roadside camera and the three answers.",
+      guard: "The school guard's phone: the operator can ask the guard to check the road before the van moves.",
+      lib: "Every assist is saved and labelled, so the van's engineers can retrain it for Malaysian roads." },
     play: "Play the simulation", pause: "Pause", replay: "Play it again", walkTitle: "One morning at a school gate", sideTitle: "Three more cases, same morning",
     hint: "You're in control. Press Play to resume.",
     note: "The school gate in this simulation is an example: school-gate cameras come only in Phase 3, with the school's and PIBG's agreement. Simpang Rimba Permai, Persiaran APEC and MRT Cyberjaya City Centre are real places on the MyAV route. Times, the van and all data are simulated.",
@@ -448,7 +460,10 @@ const T = {
   },
   bm: {
     sub: "Prototaip interaktif · larian simulasi", team: "Pasukan Bob · Asia Pacific University · Cabaran 5G Cyberjaya 2026, Trek 2",
-    lead: "Bila van tanpa pemandu ragu-ragu, ia berhenti dan minta bantuan. Operator di pusat kawalan nampak empat kamera van, dan di zon sibuk, kamera tepi jalan. Operator memutuskan; operator tidak memandu van.",
+    lead: "Sejak 20 Okt 2026, ALS menguji van penghantaran tanpa pemandu sepenuhnya di jalan raya Cyberjaya. Van seperti ini berhenti dan minta bantuan operator jarak jauh bila ragu-ragu. MATA KEDUA memberi operator itu empat kamera van dan, di zon sibuk, kamera tepi jalan. Operator memutuskan; operator tidak memandu van.",
+    ctx: { op: "Skrin pusat kawalan: soalan van, kameranya, kamera tepi jalan dan tiga jawapan.",
+      guard: "Telefon pengawal sekolah: operator boleh minta pengawal memeriksa jalan sebelum van bergerak.",
+      lib: "Setiap bantuan disimpan dan dilabel, supaya jurutera van boleh melatihnya semula untuk jalan Malaysia." },
     play: "Main simulasi", pause: "Jeda", replay: "Main semula", walkTitle: "Satu pagi di pintu sekolah", sideTitle: "Tiga lagi kes, pagi yang sama",
     hint: "Anda yang mengawal. Tekan Main untuk menyambung.",
     note: "Pintu sekolah dalam simulasi ini contoh sahaja: kamera di pintu sekolah hanya dalam Fasa 3, dengan persetujuan sekolah dan PIBG. Simpang Rimba Permai, Persiaran APEC dan MRT Cyberjaya City Centre ialah tempat sebenar di laluan MyAV. Masa, van dan data adalah simulasi.",
@@ -761,8 +776,8 @@ const ROWS = [ /* simulated. lvl h = needs review (held for a hidden person, pat
     labels: ["air bertakung", "standing water"], dec: ["Tahan, lencongan", "Hold, detour"], why: ["paras air tidak jelas dari kamera van", "water depth unclear from the van's cameras"], took: "2 min 10 s", lvl: "h", clip: true },
   { id: "AS-1029-1022", when: ["Kha 29 Okt 10:22", "Thu 29 Oct 10:22"], place: "apec", labels: ["kon kerja jalan", "road-work cones"],
     dec: ["Laluan ditolak oleh van", "Path refused by the van"], why: ["sensor van nampak kon yang terlindung", "the van's sensors saw a hidden cone"], took: "48 s", lvl: "h", clip: true },
-  { id: "AS-1102-0658", when: ["Isn 2 Nov 06:58", "Mon 2 Nov 06:58"], place: "rimba", labels: ["isyarat tangan polis", "police hand signals"],
-    dec: ["Teruskan ikut isyarat", "Go on the officer's signal"], why: ["", ""], took: "22 s", lvl: "w", clip: true },
+  { id: "AS-1102-0658", when: ["Isn 2 Nov 06:58", "Mon 2 Nov 06:58"], place: "rimba", labels: ["kakitangan majlis di simpang", "council staff at the junction"],
+    dec: ["Teruskan selepas semak kedua-dua paparan", "Go after checking both views"], why: ["", ""], took: "22 s", lvl: "w", clip: true },
   { id: "AS-1029-0731", when: ["Kha 29 Okt 07:31", "Thu 29 Oct 07:31"], place: "gateName", labels: ["video beku", "video froze"],
     dec: ["Tahan, pasukan darat", "Hold, ground team"], why: ["", ""], took: "3 min 05 s", lvl: "w", clip: false },
   { id: "AS-1030-1205", when: ["Jum 30 Okt 12:05", "Fri 30 Oct 12:05"], place: "mrt", labels: ["pejalan kaki ramai", "crowded crossing"],
@@ -833,6 +848,7 @@ function render() {
   const label = playing ? t("pause") : S.step >= DEMO_STEPS ? t("replay") : t("play");
   $("#playMain").innerHTML = `${ico(playing ? "pause" : "play", "fillme")}<span>${esc(label)}</span>`;
   $("#hint").hidden = playing || !S.tookOver; $("#hint").textContent = t("hint");
+  $("#vctx").textContent = t("ctx")[S.view];
   $("#screen").innerHTML = S.view === "op" ? renderConsole() : S.view === "guard" ? renderGuard() : renderLibrary();
   $("#stepNo").textContent = t("step")(S.step, STEPS.length);
   $("#cap").textContent = txt(st())[2];
@@ -934,8 +950,12 @@ document.addEventListener("keydown", (e) => { /* arrow keys step through the run
 });
 addEventListener("resize", updateWalk);
 try { const l = localStorage.getItem("mk-lang"); if (l === "en" || l === "bm") S.lang = l; } catch (_) { /* storage may be blocked */ }
-const linked = /^#(shot-)?step(\d+)$/.exec(location.hash); /* #step6 opens that step, paused, for links from the deck */
-if (linked && +linked[2] >= 1 && +linked[2] <= STEPS.length) { if (linked[1]) document.documentElement.classList.add("shotmode"); goStep(+linked[2]); }
+const linked = /^#(shot-|pair-)?step(\d+)$/.exec(location.hash); /* #step6 opens that step, paused, for links from the deck */
+if (linked && +linked[2] >= 1 && +linked[2] <= STEPS.length) {
+  if (linked[1]) document.documentElement.classList.add("shotmode");
+  if (linked[1] === "pair-") document.documentElement.classList.add("pairmode");
+  goStep(+linked[2]);
+}
 else { render(); setPlaying(true); } /* otherwise the simulation starts on its own; any click hands control to the judge */
 booted = true;
 setInterval(tick, 1000);

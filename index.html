@@ -1,0 +1,946 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>MATA KEDUA Prototype</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@500;600;700&display=swap">
+<style>
+/* Layout: the run as a lane on the left; the screen being shown (operator console, guard's phone, engineers' library) on the right.
+   World: Malaysian road signs and road paint. Sign colours carry status and actions only: red = Hold, yellow + box-junction hatch = locked or
+   waiting, blue = route and actions, green = clear or done. Light only, by the user's choice: the page is read on a judge's laptop in daylight. */
+:root {
+  --ground: #EEF0EF; --face: #FFFFFF; --tint: #F6F7F6; --ink: #1D2228; --ink-2: #4B535C; --ink-3: #69717A; --rule: #D6DADC; --rule-2: #E7EAEB;
+  --red: #C8102E; --red-ink: #A50D26; --red-face: #FCEBEE;
+  --yellow: #FFC20E; --yellow-ink: #7A5200; --yellow-face: #FFF5D1;
+  --blue: #005BAC; --blue-ink: #004A8C; --blue-face: #E6F0F9;
+  --green: #00843D; --green-ink: #006B32; --green-face: #E3F3EA;
+  --on-sign: #FFFFFF; --red-hover: #B00E28; --red-deep: #7E0A1D;
+  /* drawings: daylight road scenes */
+  --d-sky: #DCE6EC; --d-field: #E4E8E3; --d-pave: #D6DAD8; --d-kerb: #B3B9B7; --d-road: #6C7379; --d-mark: #FFFFFF; --d-nopark: #F2B705;
+  --d-car: #9AA2A9; --d-car2: #39414A; --d-car3: #C4C9CD; --d-glass: #252C33; --d-tail: #C8102E; --d-van: #FFFFFF; --d-van-line: #1D2228;
+  --d-person: #3E4751; --d-vest: #B9CB00; --d-truck: #5D8566; --d-fence: #8C959C; --d-map: #F4F5F4; --d-map-road: #C3C9CD; --d-hot: #D99A00;
+  --shadow: 0 1px 2px rgba(29, 34, 40, .06), 0 8px 24px -12px rgba(29, 34, 40, .22);
+  --f-ui: "Barlow", "Segoe UI", system-ui, sans-serif;
+  --f-sign: "Barlow Semi Condensed", "Barlow", "Segoe UI", system-ui, sans-serif;
+  --ease-out: cubic-bezier(.16, 1, .3, 1);
+  --dash-v: linear-gradient(to bottom, var(--d-mark) 0 7px, transparent 7px 15px);
+  --dbl-yellow: linear-gradient(var(--d-nopark), var(--d-nopark)) left 0 bottom 5px / 100% 2px no-repeat, linear-gradient(var(--d-nopark), var(--d-nopark)) left 0 bottom 0 / 100% 2px no-repeat;
+  --give-way: repeating-linear-gradient(to right, var(--ink) 0 9px, transparent 9px 15px) left 0 top 0 / 100% 2px no-repeat, repeating-linear-gradient(to right, var(--ink) 0 9px, transparent 9px 15px) left 0 top 5px / 100% 2px no-repeat;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--ground); color: var(--ink); }
+body { font: 400 16px/1.5 var(--f-ui); margin: 0; -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, select:focus-visible, input:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+h1, h2, h3 { text-wrap: balance; }
+.num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.i { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.i.fillme { fill: currentColor; stroke: none; }
+.wrap { max-width: 1480px; margin: 0 auto; padding-block: 18px 32px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* ---------- header ---------- */
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; padding-bottom: 16px; }
+.nameplate { margin: 0; background: var(--blue); color: var(--on-sign); font: 700 21px/1 var(--f-sign); letter-spacing: .07em; padding: 11px 16px 10px;
+  border-radius: 8px; box-shadow: inset 0 0 0 3px var(--blue), inset 0 0 0 4.5px var(--on-sign), 0 1px 2px rgba(29, 34, 40, .12); }
+.ident { display: grid; gap: 1px; min-width: 0; flex: 1 1 260px; }
+.ident p { margin: 0; }
+.ident .what { font-weight: 600; font-size: 16px; }
+.ident .team { font-size: 14px; color: var(--ink-2); }
+.seg { display: inline-flex; background: var(--face); border: 1px solid var(--rule); border-radius: 10px; padding: 3px; gap: 2px; }
+.seg button { border: 0; background: transparent; border-radius: 7px; padding: 7px 13px; font-weight: 600; font-size: 14.5px; color: var(--ink-2);
+  transition: background-color .2s var(--ease-out), color .2s var(--ease-out); }
+.seg button:hover { color: var(--ink); background: var(--tint); }
+.seg button[aria-pressed="true"] { background: var(--blue); color: var(--on-sign); }
+.lang button { padding: 6px 11px; font-family: var(--f-sign); letter-spacing: .05em; }
+
+/* ---------- stage ---------- */
+.stage { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 28px; align-items: start; }
+.guide { display: grid; gap: 14px; min-width: 0; }
+@media (min-width: 901px) { .guide { position: sticky; top: calc(14px + env(safe-area-inset-top, 0px)); } }
+.lead { margin: 0; font-size: 16px; color: var(--ink); max-width: 62ch; }
+.guide h2, .guide h3 { margin: 6px 0 0; font: 700 13px/1.3 var(--f-sign); letter-spacing: .09em; text-transform: uppercase; color: var(--ink-2); }
+.guide h3 { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.small { margin: 0; font-size: 13.5px; color: var(--ink-2); max-width: 62ch; }
+
+/* the run as a lane of road: asphalt with white edge lines and a dashed centre line; each stop is a white stop line;
+   blue marks the distance travelled; the current stop is a blue plate */
+.lane { list-style: none; margin: 0; padding: 0; position: relative; }
+.lane::before, .lane::after { content: ""; position: absolute; top: 6px; bottom: 6px; }
+.lane::before { left: 7px; width: 26px; border-radius: 3px;
+  background: linear-gradient(to right, transparent 3px, var(--d-mark) 3px 4.5px, transparent 4.5px 21.5px, var(--d-mark) 21.5px 23px, transparent 23px),
+    linear-gradient(to bottom, var(--d-mark) 0 7px, transparent 7px 15px) center top / 2px 15px repeat-y, var(--d-road); }
+.lane::after { left: 17px; width: 6px; background: var(--blue); transform-origin: top center; transform: scaleY(var(--k, 0)); transition: transform .7s var(--ease-out); }
+.lane button { position: relative; display: block; width: 100%; border: 0; background: transparent; text-align: left; padding: 4px 0 4px 44px; }
+.lane button::before { content: ""; position: absolute; z-index: 1; left: 10px; top: 21.5px; width: 20px; height: 4px; border-radius: 1px; background: var(--d-mark); }
+.lane button[aria-current="step"]::before { left: 11px; top: 14.5px; width: 18px; height: 18px; border-radius: 3px; background: var(--blue);
+  box-shadow: inset 0 0 0 2px var(--blue), inset 0 0 0 3.5px var(--on-sign), 0 0 0 2px var(--d-road); }
+.lane .face { display: grid; grid-template-columns: 62px minmax(0, 1fr); column-gap: 8px; padding: 9px 12px; border-radius: 6px; transition: background-color .25s var(--ease-out); }
+.lane button:hover .face { background: rgba(255, 255, 255, .65); }
+.lane button[aria-current="step"] .face { background: var(--face); box-shadow: inset 0 0 0 3px var(--face), inset 0 0 0 4.5px var(--ink); }
+.lane time { font: 600 13.5px/1.55 var(--f-sign); color: var(--ink-2); letter-spacing: .02em; }
+.lane button[aria-current="step"] time { color: var(--blue-ink); }
+.lane strong { display: block; font-size: 15px; font-weight: 600; line-height: 1.35; }
+.lane .more { grid-column: 2; display: grid; grid-template-rows: 0fr; transition: grid-template-rows .45s var(--ease-out); }
+.lane .more > span { overflow: hidden; font-size: 14px; line-height: 1.45; color: var(--ink-2); }
+.lane button[aria-current="step"] .more { grid-template-rows: 1fr; }
+.lane button[aria-current="step"] .more > span { padding-top: 3px; }
+
+/* ---------- demo column ---------- */
+.demo { min-width: 0; display: grid; gap: 12px; }
+.viewbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 14px; }
+.runctl { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.runbtn { display: inline-flex; align-items: center; gap: 8px; border: 1.5px solid var(--ink); background: var(--face); border-radius: 9px; padding: 8px 14px 8px 11px;
+  font-weight: 600; font-size: 14.5px; transition: background-color .2s var(--ease-out); }
+.runbtn:hover { background: var(--tint); }
+.runbtn .i { width: 16px; height: 16px; }
+.hint { margin: 0; font-size: 14px; color: var(--ink-2); }
+.screen { min-width: 0; }
+.sign { background: var(--face); border-radius: 6px; box-shadow: 0 0 0 1px var(--rule), inset 0 0 0 4px var(--face), inset 0 0 0 5.5px var(--ink); }
+.caption { position: relative; padding: 15px 18px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; overflow: hidden; }
+.meter { position: absolute; left: 8px; right: 8px; top: 8px; height: 3px; background: var(--blue); transform-origin: left center; transform: scaleX(0); opacity: 0; }
+.meter.run { opacity: 1; animation: meter var(--dur, 7500ms) linear both; }
+@keyframes meter { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.stepplate { flex: none; font: 700 13px/1 var(--f-sign); letter-spacing: .06em; text-transform: uppercase; color: var(--blue-ink); background: var(--blue-face); padding: 6px 9px; border-radius: 5px; }
+.caption p { margin: 0; flex: 1 1 300px; min-width: 0; font-size: 15.5px; }
+.ctl { display: flex; gap: 8px; }
+.ctl button { border: 1.5px solid var(--ink); background: var(--face); border-radius: 9px; padding: 8px 16px; font-weight: 600; transition: background-color .2s var(--ease-out), opacity .2s; }
+.ctl button:hover { background: var(--tint); }
+.ctl #nextBtn { background: var(--blue); border-color: var(--blue); color: var(--on-sign); }
+.ctl #nextBtn:hover { background: var(--blue-ink); }
+.ctl button:disabled { opacity: .35; cursor: default; }
+.foot { margin-top: 28px; padding-top: 14px; border-top: 1px solid var(--rule); font-size: 13.5px; color: var(--ink-2); display: grid; gap: 4px; }
+.foot p { margin: 0; max-width: 100ch; }
+.foot strong { color: var(--ink); font-weight: 600; }
+
+/* ---------- operator console ---------- */
+.console { padding: 8px; font-size: 14.5px; }
+.cbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 16px; padding: 9px 10px 16px; background: var(--dbl-yellow); }
+.cname { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; }
+.cname b { font-weight: 700; font-size: 15px; }
+.cname span { color: var(--ink-2); font-size: 14px; }
+.cright { display: flex; align-items: center; gap: 12px; }
+.simtag { font: 700 11.5px/1 var(--f-sign); letter-spacing: .1em; color: var(--ink); background: var(--yellow); padding: 5px 8px 4px; border-radius: 4px;
+  box-shadow: inset 0 0 0 2px var(--yellow), inset 0 0 0 3px var(--ink); }
+.clock { font: 700 16px/1 var(--f-sign); letter-spacing: .03em; }
+.opid { font: 600 13px/1 var(--f-sign); color: var(--ink-2); letter-spacing: .05em; }
+.vstat { display: flex; flex-wrap: wrap; gap: 4px 18px; padding: 7px 10px; background: var(--tint); color: var(--ink-2); font-size: 13.5px; }
+.vstat b { color: var(--ink); font-weight: 700; }
+/* the console's columns are separated by roads: the grid gaps show asphalt with a dashed centre line */
+.cgrid { display: grid; grid-template-columns: 200px minmax(0, 1fr) 304px; grid-template-rows: auto 1fr; grid-template-areas: "queue main req" "queue more req"; column-gap: 12px;
+  background: var(--dash-v) left 205px top 0 / 2px 15px repeat-y, var(--dash-v) right 309px top 0 / 2px 15px repeat-y, var(--d-road); }
+.queue, .req { padding: 14px 12px; min-width: 0; background: var(--face); }
+.queue { grid-area: queue; display: grid; gap: 12px; align-content: start; }
+.req { grid-area: req; display: flex; flex-direction: column; gap: 11px; }
+.h { margin: 0; font: 700 12.5px/1.3 var(--f-sign); letter-spacing: .09em; text-transform: uppercase; color: var(--ink-2); }
+.quiet { margin: 0; color: var(--ink-2); font-size: 14px; }
+.qitem { display: grid; gap: 6px; justify-items: start; }
+.qwhere { font-weight: 600; font-size: 14px; }
+.qwait { color: var(--ink-2); font-size: 13.5px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font: 700 12.5px/1 var(--f-sign); letter-spacing: .05em; text-transform: uppercase; padding: 6px 8px 5px; border-radius: 4px; }
+.chip .i { width: 13px; height: 13px; }
+.chip.hold { background: var(--red); color: var(--on-sign); }
+.chip.wait { background: var(--yellow); color: var(--ink); }
+.chip.ok { background: var(--green); color: var(--on-sign); }
+.hotsign { background: var(--blue); color: var(--on-sign); border-radius: 9px; padding: 11px 12px 12px; box-shadow: inset 0 0 0 3px var(--blue), inset 0 0 0 4.5px var(--on-sign); }
+.hotsign p { margin: 0 0 8px; font: 700 12px/1.3 var(--f-sign); letter-spacing: .09em; text-transform: uppercase; }
+.hotsign ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+.hotsign li { display: grid; gap: 0; font-size: 13.5px; line-height: 1.3; }
+.hotsign .num { font: 600 13px/1.3 var(--f-sign); opacity: .9; letter-spacing: .03em; }
+.tone-hold { color: var(--red-ink); } .tone-wait { color: var(--yellow-ink); } .tone-ok { color: var(--green-ink); }
+
+.cams { padding: 14px 12px; display: grid; gap: 10px; align-content: start; min-width: 0; background: var(--tint); }
+.cams.main { grid-area: main; padding-bottom: 0; }
+.cams.more { grid-area: more; padding-top: 10px; }
+.pair { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 10px; align-items: start; }
+.trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.mq { display: none; }
+.tile { position: relative; background: var(--d-sky); border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+.tile svg { display: block; width: 100%; height: auto; }
+.lbl, .lbl2 { position: absolute; font: 700 11px/1 var(--f-sign); letter-spacing: .08em; padding: 4px 6px 3px; border-radius: 3px; }
+.lbl { left: 7px; top: 7px; color: var(--on-sign); background: rgba(29, 34, 40, .82); }
+.lbl2 { right: 7px; bottom: 7px; color: var(--ink); background: rgba(255, 255, 255, .88); text-transform: uppercase; }
+.tile.gate .lbl { background: var(--blue); }
+.tile.gate.alert { border-color: var(--red); box-shadow: 0 0 0 1px var(--red); }
+.tile.off { display: grid; place-items: center; min-height: 150px; background: var(--face); border-style: dashed; color: var(--ink-2); font-size: 14px; text-align: center; padding: 18px; }
+.frozen { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(255, 245, 209, .9); color: var(--yellow-ink); font-weight: 700; font-size: 15px; text-align: center; padding: 8px; }
+.log { padding: 4px 2px 0; display: grid; gap: 4px; font-size: 13.5px; }
+.log div { display: grid; grid-template-columns: 66px minmax(0, 1fr); gap: 8px; }
+.log .num { font: 600 13px/1.5 var(--f-sign); color: var(--ink-2); letter-spacing: .02em; }
+.ask { margin: 0; font-size: 19px; line-height: 1.3; font-weight: 600; }
+.kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; font-size: 13.5px; margin: 0; }
+.kv dt { color: var(--ink-2); }
+.kv dd { margin: 0; font-weight: 500; }
+.map { border-radius: 4px; overflow: hidden; background: var(--d-map); }
+.map svg { display: block; width: 100%; height: auto; }
+.state { display: flex; gap: 8px; align-items: flex-start; margin: 0; font-size: 14px; padding: 9px 10px; border-radius: 8px; background: var(--tint); }
+.state .i { width: 16px; height: 16px; margin-top: 2px; }
+.state.hold { background: var(--red-face); color: var(--red-ink); }
+.state.wait { background: var(--yellow-face); color: var(--yellow-ink); }
+.state.ok { background: var(--green-face); color: var(--green-ink); }
+.state.plain { background: var(--blue-face); color: var(--blue-ink); }
+.ctx { width: 100%; border: 1.5px solid var(--ink); background: var(--face); border-radius: 9px; padding: 10px; font-weight: 600; transition: background-color .2s var(--ease-out); }
+.ctx:hover { background: var(--tint); }
+.labels { display: grid; gap: 5px; font-size: 14px; }
+.labels label { display: flex; gap: 8px; align-items: center; }
+.labels input { width: 16px; height: 16px; accent-color: var(--blue); }
+
+/* the action bar: Hold is a red plate; Go and Set path sit inside a yellow box junction until the way is clear */
+.bar { margin-top: auto; display: grid; gap: 8px; padding-top: 17px; background: var(--give-way); }
+.hold { --plate: var(--red); display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 56px; border: 0; border-radius: 6px; background: var(--plate); color: var(--on-sign);
+  box-shadow: inset 0 0 0 3px var(--plate), inset 0 0 0 4.5px var(--on-sign); font-weight: 700; font-size: 18px; letter-spacing: .02em; transition: background-color .25s var(--ease-out), box-shadow .25s var(--ease-out), transform .12s; }
+.hold:hover { --plate: var(--red-hover); }
+.hold[aria-pressed="true"] { --plate: var(--red-deep); }
+.hold .i { width: 20px; height: 20px; }
+.hold:active, .move:active { transform: scale(.985); }
+.moves { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.move { position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; border: 2px solid transparent; border-radius: 9px;
+  color: var(--on-sign); font-weight: 700; font-size: 16px; transition: transform .12s, background-color .25s; }
+.move span, .move .i { position: relative; z-index: 1; }
+.move.go { background: var(--green); }
+.move.path { background: var(--blue); }
+.move.go:hover { background: var(--green-ink); }
+.move.path:hover { background: var(--blue-ink); }
+.move[aria-disabled="true"] { background: var(--d-road); color: var(--ink); border-color: var(--yellow); cursor: not-allowed; }
+.move[aria-disabled="true"]::after, .moves.clearing .move::after { content: ""; position: absolute; inset: 0; z-index: 0;
+  background: repeating-linear-gradient(45deg, var(--yellow) 0 2.5px, transparent 2.5px 11px), repeating-linear-gradient(-45deg, var(--yellow) 0 2.5px, transparent 2.5px 11px); }
+.move[aria-disabled="true"] span { background: var(--face); padding: 1px 7px; border-radius: 4px; }
+.move[aria-disabled="true"] .i { background: var(--face); border-radius: 4px; padding: 2px; width: 22px; height: 22px; }
+.lockwhy { display: flex; gap: 7px; align-items: flex-start; margin: 0; font-size: 13.5px; color: var(--yellow-ink); font-weight: 500; }
+.lockwhy .i { width: 15px; height: 15px; margin-top: 2px; }
+.note { margin: 0; font-size: 13.5px; padding: 8px 10px; border-radius: 8px; background: var(--yellow-face); color: var(--yellow-ink); }
+
+/* drawing classes */
+.sky { fill: var(--d-sky); } .field { fill: var(--d-field); } .pave { fill: var(--d-pave); } .road { fill: var(--d-road); } .mark { fill: var(--d-mark); } .kerb { fill: var(--d-kerb); }
+.nopark { fill: var(--d-nopark); } .car { fill: var(--d-car); } .car2 { fill: var(--d-car2); } .car3 { fill: var(--d-car3); } .glass { fill: var(--d-glass); } .tl { fill: var(--d-tail); }
+.van { fill: var(--d-van); stroke: var(--d-van-line); stroke-width: .8; } .vantxt { fill: var(--d-van-line); font: 700 9px var(--f-sign); } .truck { fill: var(--d-truck); }
+.person { fill: var(--d-person); } .vest { fill: var(--d-vest); } .fence { stroke: var(--d-fence); stroke-width: 1; fill: none; }
+.hot { fill: none; stroke: var(--d-hot); stroke-width: 1.4; stroke-dasharray: 4 3; }
+.path { fill: none; stroke: var(--blue); stroke-width: 2.6; stroke-linecap: round; stroke-dasharray: 7 5; }
+.ptxt { fill: var(--ink-2); font: 600 10px var(--f-sign); letter-spacing: .04em; }
+.mground { fill: var(--d-map); } .mroad { fill: var(--d-map-road); } .mcar { fill: #8E979E; }
+.det { fill: none; stroke: var(--red); stroke-width: 1.6; } .detbg { fill: var(--red); } .dett { fill: var(--on-sign); font: 700 9px var(--f-sign); letter-spacing: .03em; }
+
+/* ---------- guard phone: always light; it is read outdoors ---------- */
+.phone { width: min(100%, 380px); margin: 0 auto; border: 10px solid var(--ink); border-radius: 38px; background: var(--face); color: var(--ink); overflow: hidden; box-shadow: var(--shadow); }
+.pstat { display: flex; justify-content: space-between; align-items: center; padding: 9px 20px 4px; font: 700 13.5px/1 var(--f-sign); }
+.pstat .icons { display: flex; gap: 6px; align-items: center; font-size: 12.5px; }
+.pstat svg { height: 10px; width: auto; fill: currentColor; }
+.papp { padding: 12px 18px 22px; display: flex; flex-direction: column; gap: 14px; min-height: 620px; }
+.papp header { display: grid; gap: 2px; border-bottom: 1px solid var(--rule); padding-bottom: 12px; }
+.papp header b { font-size: 19px; font-weight: 700; }
+.papp header span { color: var(--ink-2); font-size: 14.5px; }
+.pcard { border: 1px solid var(--rule); border-radius: 12px; padding: 15px; display: grid; gap: 7px; }
+.pcard.wait { border: 2px solid var(--yellow); background: var(--yellow-face); }
+.pcard.ok { border: 2px solid var(--green); background: var(--green-face); }
+.pcard h3 { margin: 0; font-size: 20px; line-height: 1.25; font-weight: 700; display: flex; gap: 9px; align-items: flex-start; }
+.pcard h3 .i { width: 22px; height: 22px; margin-top: 1px; }
+.pcard.wait h3 .i { color: var(--yellow-ink); } .pcard.ok h3 .i { color: var(--green-ink); }
+.pcard p { margin: 0; font-size: 16px; color: var(--ink-2); }
+.pbtns { margin-top: auto; display: grid; gap: 10px; }
+.big { position: relative; overflow: hidden; min-height: 66px; border: 2px solid var(--ink); border-radius: 12px; background: var(--face); color: var(--ink); font-size: 19px; font-weight: 700; touch-action: none; user-select: none; }
+.big.clearbtn { border-color: var(--green); color: var(--green-ink); }
+.big small { display: block; font-size: 13.5px; font-weight: 500; color: var(--ink-2); }
+.big .fill { position: absolute; inset: 0; transform: scaleX(0); transform-origin: left center; background: var(--green); z-index: 0; }
+.big span { position: relative; z-index: 1; }
+.big.holding .fill { transform: scaleX(1); transition: transform 1s linear; }
+.big.holding span, .big.holding small { color: var(--on-sign); transition: color .2s .45s; }
+
+/* ---------- engineers' library ---------- */
+.lib { padding: 8px; }
+.libbar { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; justify-content: space-between; padding: 9px 10px 16px; background: var(--dbl-yellow); }
+.libbar b { font-size: 16px; font-weight: 700; }
+.libbar span { font-size: 14px; color: var(--ink-2); }
+.libbody { padding: 14px 10px 10px; display: grid; gap: 12px; }
+.sum { margin: 0; font-size: 14.5px; color: var(--ink-2); }
+.sum b { color: var(--ink); font-weight: 700; }
+.filter { display: flex; gap: 8px; align-items: center; font-size: 14.5px; }
+.filter select { font: inherit; padding: 6px 10px; border: 1px solid var(--rule); border-radius: 8px; background: var(--face); color: var(--ink); }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 780px; font-size: 14.5px; }
+th { text-align: left; font: 700 12px/1.3 var(--f-sign); letter-spacing: .09em; text-transform: uppercase; color: var(--ink-2); border-bottom: 2px solid var(--ink); padding: 7px 8px; white-space: nowrap; }
+td { border-bottom: 1px solid var(--rule); padding: 10px 8px; vertical-align: top; }
+td.when, td.took { white-space: nowrap; }
+td.when .num { display: block; font-weight: 600; }
+td.when small { font: 600 12px/1.4 var(--f-sign); color: var(--ink-3); letter-spacing: .03em; }
+tr.new td { background: var(--blue-face); }
+.dec { display: grid; gap: 4px; justify-items: start; }
+.dec .why { font-size: 13.5px; color: var(--ink-2); }
+.lv { font: 700 11.5px/1 var(--f-sign); letter-spacing: .07em; text-transform: uppercase; padding: 4px 6px 3px; border-radius: 3px; }
+.lv-h { background: var(--red); color: var(--on-sign); } .lv-w { background: var(--yellow); color: var(--ink); } .lv-o { background: var(--rule-2); color: var(--ink-2); }
+.clipbtn { border: 1.5px solid var(--ink); background: var(--face); border-radius: 7px; padding: 5px 9px; font-size: 13.5px; font-weight: 600; white-space: nowrap; }
+.clipbtn:hover { background: var(--tint); }
+.cliprow td { background: var(--tint); }
+.clip { display: grid; grid-template-columns: minmax(0, 280px) minmax(0, 1fr); gap: 14px; align-items: start; font-size: 14px; color: var(--ink-2); }
+.clip p { margin: 0; max-width: 60ch; }
+
+/* #shot-stepN: the screen alone, for deck screenshots */
+.shotmode .top, .shotmode .guide, .shotmode .viewbar, .shotmode .caption, .shotmode .foot { display: none; }
+.shotmode .stage { display: block; }
+.shotmode .wrap { max-width: none; padding: 14px; }
+.shotmode .phone { box-shadow: none; }
+
+/* ---------- motion ---------- */
+::view-transition-group(root) { animation-duration: .32s; animation-timing-function: var(--ease-out); }
+@media (prefers-reduced-motion: no-preference) {
+  .moves.clearing .move::after { animation: boxclear .9s var(--ease-out) .2s both; }
+  @keyframes boxclear { from { clip-path: inset(0 0 0 0); } to { clip-path: inset(0 0 0 100%); } }
+  .moves.nudge { animation: nudge .32s ease-in-out; }
+  @keyframes nudge { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+  .tile.gate.alert { animation: alert 1.4s ease-in-out 2; }
+  @keyframes alert { 50% { box-shadow: 0 0 0 4px rgba(200, 16, 46, .28); } }
+}
+@media (prefers-reduced-motion: reduce) {
+  .moves.clearing .move::after { content: none; }
+  .lane::after, .lane .more, .lane button::before { transition: none; }
+  .big.holding .fill { transition: none; }
+  ::view-transition-group(root) { animation: none; }
+}
+
+/* ---------- narrow screens ---------- */
+@media (max-width: 1180px) {
+  .cgrid { grid-template-columns: minmax(0, 1fr) 290px; grid-template-rows: auto auto 1fr; grid-template-areas: "queue queue" "main req" "more req";
+    background: var(--dash-v) right 295px top 0 / 2px 15px repeat-y, var(--d-road); }
+  .queue { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: flex-start; padding-bottom: 19px; background: var(--dbl-yellow), var(--face); }
+  .queue .h { flex-basis: 100%; }
+  .hotsign ul { grid-auto-flow: column; gap: 4px 18px; }
+}
+@media (max-width: 900px) {
+  .stage { grid-template-columns: minmax(0, 1fr); }
+  .demo { order: -1; }
+}
+@media (max-width: 720px) {
+  .cgrid { grid-template-columns: minmax(0, 1fr); grid-template-rows: none; grid-template-areas: "main" "req" "more" "queue"; background: none; }
+  .queue { padding-bottom: 14px; background: var(--face); }
+  .req .bar { order: -1; margin-top: 0; padding-top: 0; padding-bottom: 17px; background: repeating-linear-gradient(to right, var(--ink) 0 9px, transparent 9px 15px) left 0 bottom 0 / 100% 2px no-repeat, repeating-linear-gradient(to right, var(--ink) 0 9px, transparent 9px 15px) left 0 bottom 5px / 100% 2px no-repeat; }
+  .pair { grid-template-columns: minmax(0, 1fr); }
+  .pair .tile:first-child { order: 2; }
+  .mq { display: block; margin: 0; font-weight: 600; font-size: 17px; line-height: 1.3; }
+  .cgrid:has(.mq) .req .ask { display: none; } /* the question already sits above the cameras */
+  .hotsign ul { grid-auto-flow: row; }
+  .clip { grid-template-columns: minmax(0, 1fr); }
+  .top { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+  .nameplate { justify-self: start; }
+  .ident { grid-column: 1 / -1; grid-row: 2; }
+  .caption { position: sticky; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); z-index: 5; padding: 12px 13px; display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "plate . ctl" "text text text"; gap: 6px 8px; }
+  .stepplate { grid-area: plate; align-self: center; }
+  .caption p { grid-area: text; font-size: 14px; line-height: 1.4; }
+  .ctl { grid-area: ctl; }
+  .ctl button { padding: 6px 13px; }
+  .papp { min-height: 0; }
+  .viewbar { flex-direction: column; align-items: stretch; }
+  .views { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .views button { padding: 8px 4px; font-size: 13.5px; }
+}
+</style>
+
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <filter id="fblur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.4"/></filter>
+  <symbol id="i-oct" viewBox="0 0 24 24"><path d="M8.2 2.5h7.6l5.7 5.7v7.6l-5.7 5.7H8.2l-5.7-5.7V8.2z"/><path d="M8 12h8"/></symbol>
+  <symbol id="i-go" viewBox="0 0 24 24"><path d="M12 20V5"/><path d="M6 11l6-6 6 6"/></symbol>
+  <symbol id="i-path" viewBox="0 0 24 24"><path d="M7 20v-5c0-3 2-4.5 5-4.5h5"/><path d="M14 6.5l4 4-4 4"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9.5" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 2.8l9.2 9.2-9.2 9.2-9.2-9.2z"/><path d="M12 8v4.5"/><path d="M12 16h.01"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2"/><path d="M8 12.4l2.7 2.7L16.2 9.5"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5l12 7.5-12 7.5z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6" y="4.5" width="4" height="15" rx="1"/><rect x="14" y="4.5" width="4" height="15" rx="1"/></symbol>
+  <symbol id="i-fork" viewBox="0 0 24 24"><path d="M7 21V12l-3-4"/><path d="M7 12l5-5h7"/><path d="M16 4l3 3-3 3"/></symbol>
+</defs></svg>
+
+<div class="wrap">
+  <header class="top">
+    <h1 class="nameplate">MATA KEDUA</h1>
+    <div class="ident"><p class="what" id="sub"></p><p class="team" id="team"></p></div>
+    <div class="seg lang" role="group" aria-label="Language / Bahasa">
+      <button data-act="lang:en" id="len">EN</button><button data-act="lang:bm" id="lbm">BM</button>
+    </div>
+  </header>
+
+  <main class="stage">
+    <section class="guide" aria-labelledby="walkTitle">
+      <p class="lead" id="lead"></p>
+      <h2 id="walkTitle"></h2>
+      <ol class="lane" id="walkMain"></ol>
+      <h3 id="sideTitle"></h3>
+      <ol class="lane" id="walkSide"></ol>
+      <p class="small" id="note"></p>
+    </section>
+
+    <section class="demo" aria-label="Prototype screens">
+      <div class="viewbar">
+        <div class="seg views" role="group" id="seg"></div>
+        <div class="runctl"><p class="hint" id="hint" hidden></p><button class="runbtn" data-act="play" id="playMain"></button></div>
+      </div>
+      <div class="screen" id="screen"></div>
+      <div class="caption sign">
+        <i class="meter" id="meter"></i>
+        <span class="stepplate" id="stepNo"></span>
+        <p id="cap"></p>
+        <div class="ctl"><button data-act="prev" id="prevBtn"></button><button data-act="next" id="nextBtn"></button></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <p id="foot1"></p>
+    <p id="foot2"></p>
+  </footer>
+  <div class="sr" aria-live="polite" id="announce"></div>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const T = {
+  en: {
+    sub: "Interactive prototype · simulated run", team: "Team Bob · Asia Pacific University · Cyberjaya 5G Challenge 2026, Track 2",
+    lead: "When a driverless van is unsure, it stops and asks for help. The operator in the control room sees the van's four cameras and, at busy hotspots, a roadside camera. The operator decides; the operator never drives the van.",
+    play: "Play the simulation", pause: "Pause", replay: "Play it again", walkTitle: "One morning at a school gate", sideTitle: "Three more cases, same morning",
+    hint: "You're in control. Press Play to resume.",
+    note: "The school gate in this simulation is an example: school-gate cameras come only in Phase 3, with the school's and PIBG's agreement. Simpang Rimba Permai, Persiaran APEC and MRT Cyberjaya City Centre are real places on the MyAV route. Times, the van and all data are simulated.",
+    viewas: "View as", vOp: "Operator console", vGuard: "Guard's phone", vLib: "Engineers' library",
+    prev: "Back", next: "Next", step: (n, m) => `Step ${n} of ${m}`,
+    foot1: "<strong>Interactive prototype running a simulated scenario. Not a real emergency service.</strong> In an emergency in Malaysia, call 999, or 112 from a mobile phone.",
+    foot2: "Van RV-01, operator OP-02, the guard and all times are examples. Camera views are drawings, not footage.",
+    roc: "Remote Operations Centre · Cyberjaya", route: "RV-01 · MyAV route", sim: "SIMULATED",
+    vSpeed: "km/h", vHaz: "hazard lights on", vBatt: "battery", vNet: "network",
+    qTitle: "Needs action", qNone: "No requests. 1 van on the route, no issues.", hTitle: "Busy hotspots today",
+    asking: "Asking for help", held: "Held", waitGuard: "Waiting on guard", ready: "Ready", moving: "Moving", closed: "Done", frozenS: "Video frozen",
+    gateName: "School gate", rimba: "Simpang Rimba Permai", mrt: "MRT Cyberjaya City Centre (PY40)", apec: "Persiaran APEC",
+    front: "FRONT", rear: "REAR", left: "LEFT", right: "RIGHT", gateCam: "GATE CAMERA", blur: "faces blurred",
+    gateOff: "Gate camera: no feed. It opens automatically 06:45–07:45, or when a van here asks for help.",
+    feedLost: "Feed lost",
+    noReq: "No active request.", vanAsk: "The van asks", people2: "2 people",
+    askQ: { main: "Go round the double-parked car on the right?", fa: "A rubbish lorry has stopped in the lane. Go round on the right?", frozen: "A broken-down vehicle at the junction. Wait, or go round on the right?" },
+    proposed: "Van's plan", propV: "right lane, 15 km/h", opPath: "Operator's path: right lane, 10 km/h, 1.5 m from the car",
+    waited: "Waiting", video: "Video", videoV: "4 van cameras + 1 gate, 0.2 s behind",
+    gateCount: "Gate camera", people: (n) => (n ? `${n} people in the path` : "0 people in the path"),
+    guardL: "Guard", gNone: "—", gAsked: "asked, no answer yet", gNotYet: (tm) => `not clear yet (${tm})`, gClear: "clear (07:14:30)",
+    hold: "Hold", held2: "Held", go: "Go", setPath: "Set path",
+    lockPeople: "Locked: the gate camera sees 2 people between the cars.", lockGuard: "Locked: waiting on the guard.", lockFeed: "Locked: the gate camera feed is lost.",
+    tryLocked: "Go and Set path stay locked until both views are clear.", alreadyHeld: "The van is already held.",
+    askGuard: "Ask the guard to confirm", callGround: "Call ALS's ground team", groundCalled: "Ground team called, about 6 min away.",
+    vanChecking: "The van checks the path with its own sensors: agrees. Moving.", heldState: "The van is stopped, hazard lights on.",
+    labelsH: "Labels for the library", closeAssist: "Close and log",
+    closedState: "Assist closed in 38 s and logged to the library.", faClosed: "Closed: false alarm. Gate view closed.",
+    selfState: "The lorry ahead moved off. The van sorted it out itself; the request was cancelled and logged.", frozenState: "Gate camera lost. The answer stays Hold.",
+    logTitle: "Log", gate: "GATE",
+    labelSet: ["school gate", "double-parking", "pupils crossing", "guard signalling"],
+    gApp: "Main Gate · Guard", gSub: "Van RV-01 passes here 6:45–7:45 am",
+    gIdle: "No requests.", gIdleP: "The phone vibrates when a van is waiting at your gate.",
+    gReqH: "Van RV-01 is waiting at the gate", gReqP: "White van, behind the black SUV, left lane. Press when the pupils have crossed.",
+    gClearB: "Clear", gClearHint: "press and hold for 1 second", gWaitB: "Not yet, wait",
+    gSentWait: (tm) => `Sent ${tm}: not clear yet. The van stays stopped.`, gSentClear: "Sent 07:14:30: clear.", gSentClearP: "The operator still checks both views before the van moves.",
+    libTitle: "Malaysian Edge-Case Library", libWho: "ALS engineers · simulated data",
+    sum: (n, h) => `<b>${n}</b> assists this week · median <b>41 s</b> · <b>${h}</b> held for a hidden person · <b>1</b> path refused by the van`,
+    show: "Show", fReview: "Needs review first", fAll: "All", lvl: { h: "Review", w: "Check", o: "Routine" },
+    th: ["Time", "Decision", "Place", "Labels", "Took", "Clip"],
+    openClip: "Open clip", closeClip: "Close clip", noclip: "—", clipNote: "30 s blurred clip from the gate camera. Deleted automatically on 2 Dec 2026 unless police or Futurise ask for it.",
+  },
+  bm: {
+    sub: "Prototaip interaktif · larian simulasi", team: "Pasukan Bob · Asia Pacific University · Cabaran 5G Cyberjaya 2026, Trek 2",
+    lead: "Bila van tanpa pemandu ragu-ragu, ia berhenti dan minta bantuan. Operator di pusat kawalan nampak empat kamera van, dan di zon sibuk, kamera tepi jalan. Operator memutuskan; operator tidak memandu van.",
+    play: "Main simulasi", pause: "Jeda", replay: "Main semula", walkTitle: "Satu pagi di pintu sekolah", sideTitle: "Tiga lagi kes, pagi yang sama",
+    hint: "Anda yang mengawal. Tekan Main untuk menyambung.",
+    note: "Pintu sekolah dalam simulasi ini contoh sahaja: kamera di pintu sekolah hanya dalam Fasa 3, dengan persetujuan sekolah dan PIBG. Simpang Rimba Permai, Persiaran APEC dan MRT Cyberjaya City Centre ialah tempat sebenar di laluan MyAV. Masa, van dan data adalah simulasi.",
+    viewas: "Lihat sebagai", vOp: "Konsol operator", vGuard: "Telefon pengawal", vLib: "Pustaka jurutera",
+    prev: "Kembali", next: "Seterusnya", step: (n, m) => `Langkah ${n} daripada ${m}`,
+    foot1: "<strong>Prototaip interaktif dengan senario simulasi. Ini bukan perkhidmatan kecemasan sebenar.</strong> Dalam kecemasan di Malaysia, hubungi 999, atau 112 dari telefon bimbit.",
+    foot2: "Van RV-01, operator OP-02, pengawal dan semua masa adalah contoh. Paparan kamera ialah lukisan, bukan rakaman.",
+    roc: "Pusat Operasi Jauh · Cyberjaya", route: "RV-01 · laluan MyAV", sim: "SIMULASI",
+    vSpeed: "km/j", vHaz: "lampu kecemasan menyala", vBatt: "bateri", vNet: "rangkaian",
+    qTitle: "Perlu tindakan", qNone: "Tiada permintaan. 1 van di laluan, tiada isu.", hTitle: "Zon sibuk hari ini",
+    asking: "Minta bantuan", held: "Ditahan", waitGuard: "Tunggu pengawal", ready: "Sedia", moving: "Bergerak", closed: "Selesai", frozenS: "Video beku",
+    gateName: "Pintu sekolah", rimba: "Simpang Rimba Permai", mrt: "MRT Cyberjaya City Centre (PY40)", apec: "Persiaran APEC",
+    front: "DEPAN", rear: "BELAKANG", left: "KIRI", right: "KANAN", gateCam: "KAMERA PINTU", blur: "wajah dikaburkan",
+    gateOff: "Kamera pintu: tiada suapan. Dibuka automatik 06:45–07:45, atau bila van di sini minta bantuan.",
+    feedLost: "Suapan terputus",
+    noReq: "Tiada permintaan aktif.", vanAsk: "Van bertanya", people2: "2 orang",
+    askQ: { main: "Lalu di kanan kereta yang berhenti berganda?", fa: "Lori sampah berhenti di lorong. Lalu di kanan?", frozen: "Kenderaan rosak di simpang. Tunggu atau lalu kanan?" },
+    proposed: "Cadangan van", propV: "lorong kanan, 15 km/j", opPath: "Laluan operator: lorong kanan, 10 km/j, 1.5 m dari kereta",
+    waited: "Menunggu", video: "Video", videoV: "4 kamera van + 1 pintu, lewat 0.2 s",
+    gateCount: "Kamera pintu", people: (n) => (n ? `${n} orang di laluan` : "0 orang di laluan"),
+    guardL: "Pengawal", gNone: "—", gAsked: "diminta, belum jawab", gNotYet: (tm) => `belum selamat (${tm})`, gClear: "sudah selamat (07:14:30)",
+    hold: "Tahan", held2: "Ditahan", go: "Teruskan", setPath: "Tetapkan laluan",
+    lockPeople: "Dikunci: kamera pintu nampak 2 orang di antara kereta.", lockGuard: "Dikunci: menunggu pengawal.", lockFeed: "Dikunci: suapan kamera pintu terputus.",
+    tryLocked: "Teruskan dan Tetapkan laluan dikunci sehingga kedua-dua paparan kosong.", alreadyHeld: "Van sudah ditahan.",
+    askGuard: "Minta pengawal sahkan", callGround: "Panggil pasukan darat ALS", groundCalled: "Pasukan darat dipanggil, anggaran tiba 6 min.",
+    vanChecking: "Van menyemak laluan dengan sensornya: setuju. Bergerak.", heldState: "Van berhenti, lampu kecemasan menyala.",
+    labelsH: "Label untuk pustaka", closeAssist: "Tutup dan rekod",
+    closedState: "Bantuan ditutup dalam 38 s dan direkod ke pustaka.", faClosed: "Ditutup: penggera palsu. Paparan pintu ditutup.",
+    selfState: "Lori di depan bergerak. Van selesai sendiri; permintaan dibatalkan dan direkod.", frozenState: "Kamera pintu terputus. Jawapan kekal Tahan.",
+    logTitle: "Log", gate: "PINTU",
+    labelSet: ["pintu sekolah", "berhenti berganda", "murid melintas", "isyarat pengawal"],
+    gApp: "Pintu Utama · Pengawal", gSub: "Van RV-01 lalu di sini 6:45–7:45 pagi",
+    gIdle: "Tiada permintaan.", gIdleP: "Telefon akan bergetar bila van menunggu di pintu anda.",
+    gReqH: "Van RV-01 menunggu di pintu", gReqP: "Van putih, di belakang SUV hitam, lorong kiri. Tekan bila murid sudah melintas.",
+    gClearB: "Sudah selamat", gClearHint: "tekan dan tahan 1 saat", gWaitB: "Belum, tunggu",
+    gSentWait: (tm) => `Dihantar ${tm}: belum selamat. Van kekal berhenti.`, gSentClear: "Dihantar 07:14:30: sudah selamat.", gSentClearP: "Operator masih menyemak kedua-dua paparan sebelum van bergerak.",
+    libTitle: "Pustaka Kes Tepi Malaysia", libWho: "Jurutera ALS · data simulasi",
+    sum: (n, h) => `<b>${n}</b> bantuan minggu ini · median <b>41 s</b> · <b>${h}</b> ditahan kerana orang tersembunyi · <b>1</b> laluan ditolak oleh van`,
+    show: "Tunjuk", fReview: "Perlu semakan dahulu", fAll: "Semua", lvl: { h: "Semak", w: "Periksa", o: "Rutin" },
+    th: ["Masa", "Keputusan", "Tempat", "Label", "Tempoh", "Klip"],
+    openClip: "Buka klip", closeClip: "Tutup klip", noclip: "—", clipNote: "Klip kabur 30 s daripada kamera pintu. Dipadam automatik 2 Dis 2026 kecuali polis atau Futurise minta.",
+  },
+};
+
+/* Each step sets the scene. view = default screen; req = request state; kids = where the pupils are; gate = gate camera open;
+   start = when the van's request began (for the wait timer); q = which question the van asks; ob = what blocks the van. */
+const STEPS = [
+  { t: "07:13:50", view: "op", req: "none", kids: "kerb", gate: true, speed: 28,
+    en: ["The van enters a busy hotspot", "It's the gate's busy hours. The van slows to 30 km/h and the gate camera's view opens on its own.", "Hotspots and their busy hours come from the Phase 1 hotspot map."],
+    bm: ["Van masuk zon sibuk", "Waktu sibuk pintu sekolah. Van perlahan ke 30 km/j dan paparan kamera pintu terbuka sendiri.", "Zon sibuk dan waktunya datang daripada peta hotspot Fasa 1."] },
+  { t: "07:14:05", view: "op", req: "asking", kids: "between", gate: true, speed: 0, start: "07:14:05",
+    en: ["The van stops and asks", "A car is double-parked in its lane. The van stops behind the SUV and asks: go round on the right?", "Go is locked because the gate camera sees 2 people. The van's cameras see only the back of the SUV."],
+    bm: ["Van berhenti dan bertanya", "Kereta berhenti berganda di lorongnya. Van berhenti di belakang SUV: lalu di kanan?", "Teruskan dikunci kerana kamera pintu nampak 2 orang. Kamera van nampak belakang SUV sahaja."] },
+  { t: "07:14:10", view: "op", req: "held", kids: "between", gate: true, speed: 0, start: "07:14:05",
+    en: ["The operator holds", "The gate camera shows two pupils between the cars. The operator presses Hold; the van stays stopped.", "The buttons stay in the same places in every state; Hold is always on top."],
+    bm: ["Operator menahan", "Kamera pintu menunjukkan dua murid di antara kereta. Operator tekan Tahan; van kekal berhenti.", "Butang berada di tempat yang sama dalam setiap keadaan; Tahan sentiasa di atas."] },
+  { t: "07:14:14", view: "guard", req: "guard", kids: "crossing", gate: true, speed: 0, guard: "asked", start: "07:14:05",
+    en: ["The guard is asked", "The guard's phone vibrates: a van is waiting at the gate. The guard presses Clear once the pupils have crossed.", "The guard already directs traffic by hand; this phone carries that signal to the operator."],
+    bm: ["Pengawal ditanya", "Telefon pengawal bergetar: van menunggu di pintu. Pengawal tekan Sudah selamat bila murid sudah melintas.", "Pengawal sudah mengawal lalu lintas dengan isyarat tangan; telefon ini membawa isyarat itu kepada operator."] },
+  { t: "07:14:30", view: "guard", req: "guard", kids: "kerb", gate: true, speed: 0, guard: "clear", start: "07:14:05",
+    en: ["Guard: clear", "The pupils are on the pavement. The guard presses and holds Clear.", "The guard's tap is one more signal, not the decision."],
+    bm: ["Pengawal: selamat", "Murid sudah di kaki lima. Pengawal tekan dan tahan Sudah selamat.", "Isyarat pengawal satu isyarat tambahan, bukan keputusan."] },
+  { t: "07:14:34", view: "op", req: "clear", kids: "kerb", gate: true, speed: 0, guard: "clear", start: "07:14:05",
+    en: ["Set a path", "Gate camera: 0 people in the path. The operator sets a path: right lane, 10 km/h.", "The operator doesn't drive. It sends a short path; the van does the driving."],
+    bm: ["Tetapkan laluan", "Kamera pintu: 0 orang di laluan. Operator tetapkan laluan: lorong kanan, 10 km/j.", "Operator tidak memandu. Ia menghantar laluan pendek; van yang memandu."] },
+  { t: "07:14:36", view: "op", req: "moving", kids: "kerb", gate: true, speed: 9, guard: "clear", start: "07:14:05",
+    en: ["The van checks and moves", "The van checks the path with its own sensors and moves. The operator confirms the labels.", "If the van's sensors disagreed, it would stay put and ask again."],
+    bm: ["Van semak dan bergerak", "Van menyemak laluan dengan sensornya sendiri dan bergerak. Operator sahkan label.", "Jika sensor van tidak setuju, ia kekal berhenti dan bertanya semula."] },
+  { t: "07:14:43", view: "lib", req: "closed", kids: "kerb", gate: false, speed: 24, guard: "clear",
+    en: ["Logged to the library", "Done in 38 s, with the labels the operator confirmed.", "Engineers see the cases that need review first: hidden people, refused paths, long assists."],
+    bm: ["Direkod ke pustaka", "Selesai dalam 38 s, dengan label yang disahkan operator.", "Jurutera melihat kes yang perlu disemak dahulu: orang tersembunyi, laluan ditolak, bantuan lama."] },
+  { t: "07:52:10", view: "op", req: "fa", kids: "none", gate: true, speed: 0, start: "07:52:10", q: "fa", ob: "truck", branch: true,
+    en: ["False alarm", "The van asks again, but the gate camera is empty. The operator presses Go and the view closes.", "When both views are clear, Go unlocks; Hold still works."],
+    bm: ["Penggera palsu", "Van bertanya lagi, tetapi kamera pintu kosong. Operator tekan Teruskan dan paparan ditutup.", "Bila kedua-dua paparan kosong, Teruskan dibuka; Tahan tetap berfungsi."] },
+  { t: "08:06:40", view: "op", req: "self", kids: "none", gate: true, speed: 12, start: "08:06:40", q: "fa", ob: "truck",
+    en: ["The van sorts it out", "The lorry ahead moves off before the operator answers. The request is cancelled and logged.", "The library records these too: they show when the van didn't need help."],
+    bm: ["Van selesai sendiri", "Lori di depan bergerak sebelum operator menjawab. Permintaan dibatalkan dan direkod.", "Pustaka merekod kes ini juga: ia menunjukkan bila van tidak perlu bantuan."] },
+  { t: "08:20:05", view: "op", req: "frozen", kids: "between", gate: true, speed: 0, start: "08:20:05", q: "frozen", ob: "car",
+    en: ["Video freezes", "The gate camera feed drops while the van is asking. The answer stays Hold; ALS's ground team is called.", "When video freezes or views disagree, the default is a safe stop."],
+    bm: ["Video beku", "Suapan kamera pintu terputus semasa van bertanya. Jawapan kekal Tahan; pasukan darat ALS dipanggil.", "Bila video beku atau paparan bercanggah, lalai ialah berhenti dengan selamat."] },
+];
+const DEMO_STEPS = 8, DEMO_MS = 7500;
+const dwell = (n) => (n === 1 ? 3500 : DEMO_MS);
+const reduced = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+let S = fresh();
+let playing = false, playTimer = null, holdTimer = null, lastLock = null, builtLang = null;
+function fresh() {
+  return { step: 1, view: "op", lang: "en", base: Date.now(), tried: false, done: false, held: false, guardWait: null, filter: "review", labels: [true, true, true, true], clip: null, tookOver: false };
+}
+const t = (k) => T[S.lang][k];
+const st = () => STEPS[S.step - 1];
+const txt = (s) => s[S.lang];
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const ico = (id, cls = "") => `<svg class="i ${cls}" aria-hidden="true"><use href="#i-${id}"/></svg>`;
+const sec = (hms) => { const [h, m, s] = hms.split(":").map(Number); return h * 3600 + m * 60 + s; };
+const hms = (n) => [Math.floor(n / 3600), Math.floor(n / 60) % 60, n % 60].map((x) => String(x).padStart(2, "0")).join(":");
+const mmss = (n) => `${String(Math.floor(n / 60)).padStart(2, "0")}:${String(n % 60).padStart(2, "0")}`;
+
+/* Simulated clock: the step's time plus the seconds spent on it, never running past the next step's time. */
+function clockSec() {
+  const now = sec(st().t), next = STEPS[S.step] && !STEPS[S.step].branch ? sec(STEPS[S.step].t) : now + 300;
+  return now + Math.min(Math.floor((Date.now() - S.base) / 1000), Math.max(0, next - now - 1));
+}
+const clockNow = () => hms(clockSec());
+const stamp = (gap) => hms(Math.max(clockSec(), sec(st().t) + gap)); /* an operator action is never logged before the event it answers */
+const waited = () => (st().start ? mmss(Math.max(0, clockSec() - sec(st().start))) : "");
+
+/* ---------- drawings (daylight) ---------- */
+function figs(list) { /* people drawn small, faces blurred */
+  return list.map(([x, y, s = 1]) => `<g filter="url(#fblur)"><circle class="person" cx="${x}" cy="${y - 6 * s}" r="${2.6 * s}"/><rect class="person" x="${x - 2.4 * s}" y="${y - 3.4 * s}" width="${4.8 * s}" height="${7 * s}" rx="${1.6 * s}"/></g>`).join("");
+}
+function camFront(sc) {
+  const passing = sc.req === "moving" || sc.req === "closed" || sc.req === "self";
+  const sx = passing ? -24 : 0;
+  const ob = sc.ob === "truck"
+    ? `<rect class="truck" x="38" y="8" width="84" height="72" rx="3"/><rect class="glass" x="46" y="16" width="68" height="10"/><rect class="tl" x="40" y="62" width="8" height="5"/><rect class="tl" x="112" y="62" width="8" height="5"/>`
+    : `<rect class="car2" x="42" y="18" width="74" height="62" rx="5"/><rect class="glass" x="50" y="24" width="58" height="20" rx="3" opacity=".7"/><rect class="tl" x="44" y="50" width="8" height="5"/><rect class="tl" x="106" y="50" width="8" height="5"/>`;
+  return `<svg viewBox="0 0 160 90" role="img" aria-label="${esc(t("front"))}"><rect class="sky" width="160" height="90"/>
+    <rect class="pave" x="0" y="38" width="160" height="4"/><polygon class="road" points="0,90 160,90 112,40 48,40"/>
+    <rect class="mark" x="78" y="62" width="4" height="10"/><rect class="mark" x="79" y="46" width="2.5" height="6"/>
+    <polygon class="nopark" points="0,84 0,86.5 46,41 45,41"/><polygon class="nopark" points="0,88.5 0,90 49,41 48,41"/>
+    <g transform="translate(${sx},0)">${ob}<rect x="70" y="66" width="18" height="7" fill="#C9CED2" filter="url(#fblur)"/></g></svg>`;
+}
+function camRear() {
+  return `<svg viewBox="0 0 160 90" role="img" aria-label="${esc(t("rear"))}"><rect class="sky" width="160" height="90"/>
+    <polygon class="road" points="0,90 160,90 108,42 52,42"/><rect class="mark" x="78" y="64" width="4" height="10"/>
+    <rect class="car" x="62" y="40" width="36" height="26" rx="4"/><rect class="glass" x="66" y="43" width="28" height="9" rx="2" opacity=".75"/></svg>`;
+}
+function camLeft() {
+  return `<svg viewBox="0 0 160 90" role="img" aria-label="${esc(t("left"))}"><rect class="field" width="160" height="90"/>
+    <rect class="pave" x="0" y="50" width="160" height="8"/><rect class="kerb" x="0" y="58" width="160" height="4"/><rect class="road" x="0" y="62" width="160" height="28"/>
+    <rect class="nopark" x="0" y="64" width="160" height="1.3"/><rect class="nopark" x="0" y="66.6" width="160" height="1.3"/>
+    <path class="fence" d="M0 30 H160 M0 40 H160 ${Array.from({ length: 17 }, (_, i) => `M${i * 10} 26 V50`).join(" ")}"/>
+    <rect class="car3" x="18" y="68" width="58" height="18" rx="4"/><rect class="car" x="96" y="68" width="52" height="18" rx="4"/></svg>`;
+}
+function camRight(sc) {
+  const mx = sc.req === "moving" ? 120 : 60;
+  return `<svg viewBox="0 0 160 90" role="img" aria-label="${esc(t("right"))}"><rect class="sky" width="160" height="90"/>
+    <polygon class="road" points="0,90 160,90 160,40 0,52"/><rect class="mark" x="20" y="70" width="16" height="2.5"/><rect class="mark" x="70" y="66" width="16" height="2.5"/><rect class="mark" x="120" y="62" width="16" height="2.5"/>
+    <g transform="translate(${mx},0)"><rect class="car2" x="0" y="54" width="6" height="12" rx="2"/><circle class="person" cx="3" cy="51" r="2.6" filter="url(#fblur)"/></g></svg>`;
+}
+function camGate(sc, frozen) {
+  const vanX = sc.req === "moving" ? 150 : sc.req === "closed" ? 214 : sc.speed > 0 && sc.req === "none" ? 40 : 92;
+  const vanY = sc.req === "moving" ? 96 : 116;
+  const kids = { between: [[164, 100], [171, 102]], crossing: [[176, 86], [184, 84]], kerb: [[196, 50], [204, 52]], none: [] }[sc.kids] || [];
+  const det = kids.length && sc.kids !== "kerb" && !frozen ? (() => {
+    const xs = kids.map((k) => k[0]), ys = kids.map((k) => k[1]); const x0 = Math.min(...xs) - 7, y0 = Math.min(...ys) - 17;
+    const w = Math.max(...xs) - x0 + 7, lab = t("people2");
+    return `<rect class="det" x="${x0}" y="${y0}" width="${w}" height="${Math.max(...ys) - y0 + 8}" rx="1.5"/>
+      <rect class="detbg" x="${x0 - .8}" y="${y0 - 12}" width="${lab.length * 4.6 + 8}" height="11" rx="1.5"/><text class="dett" x="${x0 + 3}" y="${y0 - 3.6}">${esc(lab)}</text>`;
+  })() : "";
+  return `<svg viewBox="0 0 240 135" role="img" aria-label="${esc(t("gateCam"))}"><rect class="field" width="240" height="135"/>
+    <rect class="pave" x="0" y="40" width="240" height="11"/><rect class="kerb" x="0" y="51" width="240" height="3"/>
+    <path class="fence" d="M0 26 H240 ${Array.from({ length: 25 }, (_, i) => (i > 15 && i < 20 ? "" : `M${i * 10} 18 V40`)).join(" ")}"/>
+    <rect class="road" x="0" y="54" width="240" height="81"/><rect class="nopark" x="0" y="56" width="240" height="1.2"/><rect class="nopark" x="0" y="58.6" width="240" height="1.2"/>
+    <rect class="mark" x="0" y="93" width="240" height="1.5" opacity=".7"/>
+    ${Array.from({ length: 8 }, (_, i) => `<rect class="mark" x="${i * 32 + 4}" y="73" width="16" height="2"/>`).join("")}
+    <rect class="car2" x="128" y="96" width="32" height="18" rx="3"/><rect class="car" x="182" y="96" width="30" height="17" rx="3"/><rect class="car3" x="218" y="96" width="26" height="17" rx="3"/>
+    <rect class="car" x="20" y="60" width="28" height="14" rx="3"/>
+    <rect class="van" x="${vanX}" y="${vanY}" width="30" height="16" rx="3"/><text class="vantxt" x="${vanX + 3.5}" y="${vanY + 11}">RV-01</text>
+    <g filter="url(#fblur)"><rect class="vest" x="174" y="40" width="6" height="9" rx="2"/><circle class="person" cx="177" cy="37" r="2.6"/></g>
+    ${figs(kids.map(([x, y]) => [x, y, 1.3]))}${det}</svg>`;
+}
+function mapSvg(sc, showPath) {
+  const vx = sc.req === "moving" ? 150 : sc.req === "none" ? 40 : 96;
+  return `<svg viewBox="0 0 280 110" role="img" aria-label="Map"><rect class="mground" width="280" height="110"/>
+    <rect class="mroad" x="0" y="34" width="280" height="56"/><rect class="mark" x="0" y="61" width="280" height="1.5"/>
+    <rect class="nopark" x="0" y="36" width="280" height="1"/><rect class="nopark" x="0" y="38.2" width="280" height="1"/>
+    <rect x="128" y="22" width="34" height="8" rx="1.5" class="mcar" opacity=".55"/><text class="ptxt" x="88" y="19">${esc(t("gate"))}</text>
+    <circle class="hot" cx="145" cy="52" r="44"/>
+    <rect class="mcar" x="120" y="66" width="26" height="14" rx="2"/><rect class="mcar" x="160" y="66" width="24" height="14" rx="2"/>
+    <rect class="van" x="${vx - 20}" y="66" width="22" height="14" rx="2"/>
+    ${showPath ? `<path class="path" d="M${vx} 73 C ${vx + 20} 73, ${vx + 24} 50, ${vx + 44} 50 L 196 50 C 214 50, 216 73, 236 73"/>` : ""}
+    <text class="ptxt" x="6" y="104">r 150 m</text></svg>`;
+}
+
+/* ---------- operator console ---------- */
+const TONE_ICON = { hold: "oct", wait: "warn", ok: "check" };
+function opState(sc) {
+  if (sc.req === "fa") return S.done ? ["closed", "ok"] : S.held ? ["held", "hold"] : ["asking", "wait"];
+  if (sc.req === "clear" && S.held) return ["held", "hold"];
+  return { asking: ["asking", "wait"], held: ["held", "hold"], guard: ["waitGuard", "wait"], clear: ["ready", "ok"],
+    moving: ["moving", "ok"], closed: ["closed", "ok"], self: ["closed", "ok"], frozen: ["frozenS", "hold"] }[sc.req] || null;
+}
+function logLines(sc) {
+  const bm = S.lang === "bm";
+  const L = [];
+  const add = (tm, b, e) => L.push([tm, bm ? b : e]);
+  if (["none", "asking", "held", "guard", "clear", "moving", "closed"].includes(sc.req)) {
+    add("07:13:50", "Masuk zon sibuk; kamera pintu dibuka", "Entered busy hotspot; gate camera opened");
+    const n = { none: 1, asking: 2, held: 3, guard: sc.guard === "clear" ? 5 : 4, clear: 6, moving: 7, closed: 8 }[sc.req];
+    if (n >= 2) add("07:14:05", "Van berhenti, minta bantuan", "Van stopped, asked for help");
+    if (n >= 3) add("07:14:10", "OP-02: Tahan (2 orang di kamera pintu)", "OP-02: Hold (2 people on gate camera)");
+    if (n >= 4) add("07:14:14", "Pengawal diminta sahkan", "Guard asked to confirm");
+    if (S.guardWait) add(S.guardWait, "Pengawal: belum selamat", "Guard: not clear yet");
+    if (n >= 5) add("07:14:30", "Pengawal: sudah selamat", "Guard: clear");
+    if (sc.req === "clear" && S.held) add(S.held, "OP-02: Tahan", "OP-02: Hold");
+    if (n >= 7) add("07:14:34", "OP-02: laluan kanan, 10 km/j", "OP-02: path right, 10 km/h");
+    if (n >= 7) add("07:14:36", "Van setuju, bergerak", "Van agreed, moving");
+    if (n >= 8) add("07:14:43", "Ditutup, 38 s, direkod", "Closed, 38 s, logged");
+  } else if (sc.req === "fa") {
+    add("07:52:10", "Van berhenti (lori sampah), minta bantuan", "Van stopped (rubbish lorry), asked for help");
+    if (S.held) add(S.held, "OP-02: Tahan", "OP-02: Hold");
+    if (S.done) add(S.done, "OP-02: Teruskan; ditutup, penggera palsu", "OP-02: Go; closed, false alarm");
+  } else if (sc.req === "self") {
+    add("08:06:40", "Van berhenti (lori sampah), minta bantuan", "Van stopped (rubbish lorry), asked for help");
+    add("08:06:46", "Lori bergerak; van selesai sendiri, dibatalkan", "Lorry moved off; resolved by van, cancelled");
+  } else if (sc.req === "frozen") {
+    add("08:20:05", "Van berhenti (kenderaan rosak), minta bantuan", "Van stopped (broken-down vehicle), asked for help");
+    add("08:20:07", "Suapan kamera pintu terputus; kekal Tahan", "Gate camera feed lost; stays Hold");
+    if (S.done) add(S.done, "Pasukan darat ALS dipanggil", "ALS ground team called");
+  }
+  return L.reverse().slice(0, 5).map(([tm, s]) => `<div><span class="num">${tm}</span><span>${esc(s)}</span></div>`).join("");
+}
+const stateLine = (tone, msg) => `<p class="state ${tone}">${ico(TONE_ICON[tone] || "warn")}<span>${esc(msg)}</span></p>`;
+function renderConsole() {
+  const sc = st();
+  const stt = opState(sc);
+  const live = ["asking", "held", "guard", "clear", "fa", "frozen"].includes(sc.req) && !(sc.req === "fa" && S.done);
+  const frozen = sc.req === "frozen";
+  const q = t("askQ")[sc.q || "main"];
+  const queue = live || sc.req === "moving"
+    ? `<div class="qitem"><span class="chip ${stt[1]}">${ico(TONE_ICON[stt[1]])}${esc(t(stt[0]))}</span><span class="qwhere">RV-01 · ${esc(sc.req === "fa" || sc.req === "frozen" ? t("apec") : t("gateName"))}</span>
+       <span class="qwait">${esc(t("waited"))} <span class="num" id="wt">${waited()}</span></span></div>`
+    : `<p class="quiet">${esc(t("qNone"))}</p>`;
+  const hot = `<div class="hotsign"><p>${esc(t("hTitle"))}</p><ul>
+      <li><span>${esc(t("gateName"))}</span><span class="num">06:45–07:45</span></li>
+      <li><span>${esc(t("rimba"))}</span><span class="num">07:00–09:00</span></li>
+      <li><span>${esc(t("mrt"))}</span><span class="num">17:30–19:00</span></li></ul></div>`;
+  const gateOn = sc.gate && !(sc.req === "fa" && S.done) && sc.req !== "closed";
+  const peopleN = gateOn && !frozen && ["between", "crossing"].includes(sc.kids) ? 2 : 0;
+  const gateTile = gateOn
+    ? `<div class="tile gate ${["asking", "held"].includes(sc.req) && peopleN ? "alert" : ""}">${camGate(sc, frozen)}<span class="lbl">${esc(t("gateCam"))}</span><span class="lbl2">${esc(t("blur"))}</span>
+        ${frozen ? `<div class="frozen">${esc(t("feedLost"))} 00:04</div>` : ""}</div>`
+    : `<div class="tile off">${esc(t("gateOff"))}</div>`;
+  const camsMain = `${live ? `<p class="mq">${esc(q)}</p>` : ""}<div class="pair"><div class="tile">${camFront(sc)}<span class="lbl">${esc(t("front"))}</span></div>${gateTile}</div>`;
+  const camsMore = `<div class="trio"><div class="tile">${camLeft()}<span class="lbl">${esc(t("left"))}</span></div><div class="tile">${camRight(sc)}<span class="lbl">${esc(t("right"))}</span></div>
+      <div class="tile">${camRear()}<span class="lbl">${esc(t("rear"))}</span></div></div>
+    <div class="log"><p class="h">${esc(t("logTitle"))}</p>${logLines(sc) || `<p class="quiet">—</p>`}</div>`;
+
+  /* request panel */
+  const guardV = sc.guard === "clear" ? `<span class="tone-ok">${esc(t("gClear"))}</span>` : S.guardWait ? `<span class="tone-wait">${esc(t("gNotYet")(S.guardWait))}</span>`
+    : sc.guard === "asked" ? `<span class="tone-wait">${esc(t("gAsked"))}</span>` : esc(t("gNone"));
+  const info = `<dl class="kv"><dt>${esc(t("waited"))}</dt><dd class="num" id="wt2">${waited()}</dd><dt>${esc(t("proposed"))}</dt><dd>${esc(t("propV"))}</dd>
+      <dt>${esc(t("gateCount"))}</dt><dd class="${peopleN ? "tone-hold" : frozen ? "tone-wait" : "tone-ok"}">${frozen ? esc(t("feedLost")) : esc(t("people")(peopleN))}</dd>
+      <dt>${esc(t("guardL"))}</dt><dd>${guardV}</dd><dt>${esc(t("video"))}</dt><dd>${esc(t("videoV"))}</dd></dl>`;
+  let body = "", ctx = "";
+  if (sc.req === "none") body = `<p class="quiet">${esc(t("noReq"))}</p>`;
+  else if (sc.req === "moving") {
+    body = `<p class="ask">${esc(q)}</p>${stateLine("ok", t("vanChecking"))}
+      <div class="labels" role="group" aria-label="${esc(t("labelsH"))}"><p class="h">${esc(t("labelsH"))}</p>${t("labelSet").map((l, i) =>
+        `<label><input type="checkbox" id="lb${i}" data-label="${i}" ${S.labels[i] ? "checked" : ""}> ${esc(l)}</label>`).join("")}</div>`;
+    ctx = `<button class="ctx" data-act="close">${esc(t("closeAssist"))}</button>`;
+  } else if (sc.req === "closed") body = stateLine("ok", t("closedState"));
+  else if (sc.req === "self") body = stateLine("ok", t("selfState"));
+  else if (sc.req === "fa" && S.done) body = stateLine("ok", t("faClosed"));
+  else {
+    body = `<p class="ask">${esc(q)}</p>${info}`;
+    if (sc.req === "held" || (sc.req === "clear" && S.held) || (sc.req === "fa" && S.held)) body += stateLine("hold", t("heldState"));
+    if (sc.req === "clear") body += `<p class="state plain">${ico("path")}<span>${esc(t("opPath"))}</span></p>`;
+    if (frozen) body += stateLine("hold", t("frozenState")) + (S.done ? stateLine("wait", t("groundCalled")) : "");
+    if (sc.req === "held") ctx = `<button class="ctx" data-act="askguard">${esc(t("askGuard"))}</button>`;
+    if (frozen && !S.done) ctx = `<button class="ctx" data-act="ground">${esc(t("callGround"))}</button>`;
+  }
+  let bar = "";
+  if (live) {
+    const lock = peopleN ? t("lockPeople") : frozen ? t("lockFeed") : sc.req === "guard" ? t("lockGuard") : "";
+    const isHeld = ["held", "guard", "frozen"].includes(sc.req) || S.held;
+    const clearing = lastLock && !lock; /* the box junction clears the moment the way is clear */
+    lastLock = lock;
+    bar = `<div class="bar"><button class="hold" data-act="hold" aria-pressed="${isHeld}">${ico("oct", isHeld ? "fillme" : "")}<span>${esc(isHeld ? t("held2") : t("hold"))}</span></button>
+      <div class="moves ${clearing ? "clearing" : ""} ${S.tried && lock ? "nudge" : ""}">
+        <button class="move go" data-act="go" aria-disabled="${!!lock}">${ico(lock ? "lock" : "go")}<span>${esc(t("go"))}</span></button>
+        <button class="move path" data-act="setpath" aria-disabled="${!!lock}">${ico(lock ? "lock" : "path")}<span>${esc(t("setPath"))}</span></button></div>
+      ${lock ? `<p class="lockwhy">${ico("warn")}<span>${esc(lock)}</span></p>` : ""}${S.tried && lock ? `<p class="note" role="alert">${esc(t("tryLocked"))}</p>` : ""}</div>`;
+  } else lastLock = null;
+  const showPath = sc.req === "clear" || sc.req === "moving";
+  return `<div class="console sign"><div class="cbar"><div class="cname"><b>${esc(t("roc"))}</b><span>${esc(t("route"))}</span></div>
+      <div class="cright"><span class="simtag">${esc(t("sim"))}</span><span class="clock num" id="cclock">${clockNow()}</span><span class="opid">OP-02</span></div></div>
+    <div class="vstat"><span><b>RV-01</b></span><span><b class="num">${sc.speed}</b> ${esc(t("vSpeed"))}</span>${sc.speed === 0 ? `<span class="tone-wait">${esc(t("vHaz"))}</span>` : ""}
+      <span>${esc(t("vBatt"))} <b class="num">64%</b></span><span>${esc(t("vNet"))} <b class="num">5G SA · 38 ms</b></span></div>
+    <div class="cgrid"><aside class="queue"><p class="h">${esc(t("qTitle"))}</p>${queue}${hot}</aside>
+      <section class="cams main" aria-label="Cameras">${camsMain}</section><section class="cams more" aria-label="More cameras and log">${camsMore}</section>
+      <aside class="req" aria-live="polite">${body}<div class="map">${mapSvg(sc, showPath)}</div>${ctx}${bar}</aside></div></div>`;
+}
+
+/* ---------- guard phone ---------- */
+function renderGuard() {
+  const sc = st();
+  let card, btns = "";
+  const pair = `<div class="pbtns"><button class="big" data-act="gwait"><span>${esc(t("gWaitB"))}</span></button>
+      <button class="big clearbtn" id="gclear" data-hold="gclear"><i class="fill"></i><span>${esc(t("gClearB"))}<small>${esc(t("gClearHint"))}</small></span></button></div>`;
+  if (sc.guard === "clear") card = `<div class="pcard ok"><h3>${ico("check")}<span>${esc(t("gSentClear"))}</span></h3><p>${esc(t("gSentClearP"))}</p></div>`;
+  else if (sc.guard === "asked" && S.guardWait) { card = `<div class="pcard wait"><h3>${ico("warn")}<span>${esc(t("gSentWait")(S.guardWait))}</span></h3></div>`; btns = pair; }
+  else if (sc.guard === "asked") { card = `<div class="pcard wait"><h3>${ico("warn")}<span>${esc(t("gReqH"))}</span></h3><p>${esc(t("gReqP"))}</p></div>`; btns = pair; }
+  else card = `<div class="pcard"><h3><span>${esc(t("gIdle"))}</span></h3><p>${esc(t("gIdleP"))}</p></div>`;
+  const tm = clockNow().slice(0, 5).replace(/^0/, "");
+  return `<div class="phone"><div class="pstat"><span id="pclock" class="num">${tm}</span><span class="icons">
+      <svg viewBox="0 0 18 11" aria-hidden="true"><rect x="0" y="7" width="3" height="4"/><rect x="5" y="5" width="3" height="6"/><rect x="10" y="2.5" width="3" height="8.5"/><rect x="15" y="0" width="3" height="11"/></svg>5G
+      <svg viewBox="0 0 24 11" aria-hidden="true"><rect x=".5" y=".5" width="20" height="10" rx="2" fill="none" stroke="currentColor"/><rect x="2" y="2" width="13" height="7" rx="1"/><rect x="21.5" y="3.5" width="2" height="4" rx="1"/></svg>71%</span></div>
+    <div class="papp"><header><b>${esc(t("gApp"))}</b><span>${esc(t("gSub"))}</span></header>${card}${btns}</div></div>`;
+}
+
+/* ---------- engineers' library ---------- */
+const ROWS = [ /* simulated. lvl h = needs review (held for a hidden person, path refused, long), w = check, o = routine */
+  { id: "AS-1102-0714", new: true, when: ["Isn 2 Nov 07:14", "Mon 2 Nov 07:14"], place: "gateName", dec: ["Tahan, kemudian laluan kanan", "Hold, then path right"],
+    why: ["2 orang tersembunyi, nampak di kamera pintu", "2 people hidden, seen on the gate camera"], took: "38 s", lvl: "h", clip: true },
+  { id: "AS-1030-1741", when: ["Jum 30 Okt 17:41", "Fri 30 Oct 17:41"], place: ["Persiaran Rimba Permai (lembah)", "Persiaran Rimba Permai (dip)"],
+    labels: ["air bertakung", "standing water"], dec: ["Tahan, lencongan", "Hold, detour"], why: ["paras air tidak jelas dari kamera van", "water depth unclear from the van's cameras"], took: "2 min 10 s", lvl: "h", clip: true },
+  { id: "AS-1029-1022", when: ["Kha 29 Okt 10:22", "Thu 29 Oct 10:22"], place: "apec", labels: ["kon kerja jalan", "road-work cones"],
+    dec: ["Laluan ditolak oleh van", "Path refused by the van"], why: ["sensor van nampak kon yang terlindung", "the van's sensors saw a hidden cone"], took: "48 s", lvl: "h", clip: true },
+  { id: "AS-1102-0658", when: ["Isn 2 Nov 06:58", "Mon 2 Nov 06:58"], place: "rimba", labels: ["isyarat tangan polis", "police hand signals"],
+    dec: ["Teruskan ikut isyarat", "Go on the officer's signal"], why: ["", ""], took: "22 s", lvl: "w", clip: true },
+  { id: "AS-1029-0731", when: ["Kha 29 Okt 07:31", "Thu 29 Oct 07:31"], place: "gateName", labels: ["video beku", "video froze"],
+    dec: ["Tahan, pasukan darat", "Hold, ground team"], why: ["", ""], took: "3 min 05 s", lvl: "w", clip: false },
+  { id: "AS-1030-1205", when: ["Jum 30 Okt 12:05", "Fri 30 Oct 12:05"], place: "mrt", labels: ["pejalan kaki ramai", "crowded crossing"],
+    dec: ["Teruskan", "Go"], why: ["", ""], took: "18 s", lvl: "o", clip: true },
+  { id: "AS-1030-0802", when: ["Jum 30 Okt 08:02", "Fri 30 Oct 08:02"], place: ["Persiaran Cyber Point Selatan", "Persiaran Cyber Point Selatan"], labels: ["motosikal mencelah", "motorcycles filtering"],
+    dec: ["Diselesaikan oleh van", "Resolved by van"], why: ["", ""], took: "—", lvl: "o", clip: false },
+];
+function renderLibrary() {
+  const L = S.lang === "bm" ? 0 : 1;
+  const showNew = S.step >= 8;
+  const rows = ROWS.filter((r) => (!r.new || showNew) && (S.filter === "all" || r.lvl !== "o"));
+  const place = (p) => (typeof p === "string" ? t(p) : p[L]);
+  const labels = (r) => (r.new ? t("labelSet").filter((_, i) => S.labels[i]).join(" · ") : r.labels[L]);
+  const tr = rows.map((r) => {
+    const open = S.clip === r.id;
+    const main = `<tr class="${r.new && S.step === 8 ? "new" : ""}"><td class="when"><span class="num">${esc(r.when[L])}</span><small class="num">${r.id}</small></td>
+      <td><div class="dec"><span class="lv lv-${r.lvl}">${esc(t("lvl")[r.lvl])}</span><span>${esc(r.dec[L])}</span>${r.why[L] ? `<span class="why">${esc(r.why[L])}</span>` : ""}</div></td>
+      <td>${esc(place(r.place))}</td><td>${esc(labels(r))}</td><td class="num took">${esc(r.took)}</td>
+      <td>${r.clip ? `<button class="clipbtn" data-act="clip:${r.id}" aria-expanded="${open}">${esc(open ? t("closeClip") : t("openClip"))}</button>` : esc(t("noclip"))}</td></tr>`;
+    const detail = open ? `<tr class="cliprow"><td colspan="6"><div class="clip"><div class="tile">${camGate({ req: "held", kids: r.new ? "between" : "none", speed: 0 }, false)}</div>
+      <p>${esc(t("clipNote"))}</p></div></td></tr>` : "";
+    return main + detail;
+  }).join("");
+  return `<div class="lib sign"><div class="libbar"><b>${esc(t("libTitle"))}</b><span>${esc(t("libWho"))}</span></div>
+    <div class="libbody"><p class="sum">${t("sum")(showNew ? 24 : 23, showNew ? 5 : 4)}</p>
+    <label class="filter" for="flt">${esc(t("show"))} <select id="flt" data-change="filter"><option value="review" ${S.filter === "review" ? "selected" : ""}>${esc(t("fReview"))}</option>
+      <option value="all" ${S.filter === "all" ? "selected" : ""}>${esc(t("fAll"))}</option></select></label>
+    <div class="tablewrap"><table><thead><tr>${t("th").map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${tr}</tbody></table></div></div></div>`;
+}
+
+/* ---------- the run, drawn as a lane ---------- */
+function buildWalk() {
+  const item = (s, i) => `<li><button data-act="step:${i + 1}"><span class="face"><time class="num">${s.t}</time><strong>${esc(txt(s)[0])}</strong><span class="more"><span>${esc(txt(s)[1])}</span></span></span></button></li>`;
+  $("#walkMain").innerHTML = STEPS.slice(0, DEMO_STEPS).map(item).join("");
+  $("#walkSide").innerHTML = STEPS.slice(DEMO_STEPS).map((s, i) => item(s, i + DEMO_STEPS)).join("");
+  builtLang = S.lang;
+}
+function updateWalk() {
+  document.querySelectorAll(".lane button").forEach((b, i) => {
+    const n = i + 1;
+    b.toggleAttribute("aria-current", false);
+    if (n === S.step) b.setAttribute("aria-current", "step");
+    b.classList.toggle("done", S.step <= DEMO_STEPS ? n < S.step : n > DEMO_STEPS && n < S.step);
+  });
+  fillLanes();
+  clearTimeout(fillTimer); fillTimer = setTimeout(fillLanes, 480); /* again once the previous step's description has folded away */
+}
+let fillTimer = null;
+function fillLanes() { /* blue fills the lane up to the current stop */
+  for (const lane of [$("#walkMain"), $("#walkSide")]) {
+    const cur = lane.querySelector('[aria-current="step"]'), span = Math.max(1, lane.offsetHeight - 12);
+    lane.style.setProperty("--k", cur ? Math.min(1, (cur.offsetTop + 17) / span).toFixed(4) : "0");
+  }
+}
+
+/* ---------- page ---------- */
+function render() {
+  document.documentElement.lang = S.lang === "bm" ? "ms" : "en";
+  if (builtLang !== S.lang) buildWalk();
+  $("#sub").textContent = t("sub"); $("#team").textContent = t("team"); $("#lead").textContent = t("lead");
+  $("#walkTitle").textContent = t("walkTitle"); $("#sideTitle").innerHTML = `${ico("fork")}<span>${esc(t("sideTitle"))}</span>`;
+  $("#note").textContent = t("note");
+  $("#foot1").innerHTML = t("foot1"); $("#foot2").textContent = t("foot2");
+  $("#prevBtn").textContent = t("prev"); $("#nextBtn").textContent = t("next");
+  $("#len").setAttribute("aria-pressed", String(S.lang === "en")); $("#lbm").setAttribute("aria-pressed", String(S.lang === "bm"));
+  $("#seg").setAttribute("aria-label", t("viewas"));
+  $("#seg").innerHTML = [["op", "vOp"], ["guard", "vGuard"], ["lib", "vLib"]].map(([v, k]) => `<button data-act="view:${v}" aria-pressed="${S.view === v}">${esc(t(k))}</button>`).join("");
+  const label = playing ? t("pause") : S.step >= DEMO_STEPS ? t("replay") : t("play");
+  $("#playMain").innerHTML = `${ico(playing ? "pause" : "play", "fillme")}<span>${esc(label)}</span>`;
+  $("#hint").hidden = playing || !S.tookOver; $("#hint").textContent = t("hint");
+  $("#screen").innerHTML = S.view === "op" ? renderConsole() : S.view === "guard" ? renderGuard() : renderLibrary();
+  $("#stepNo").textContent = t("step")(S.step, STEPS.length);
+  $("#cap").textContent = txt(st())[2];
+  $("#prevBtn").disabled = S.step <= 1; $("#nextBtn").disabled = S.step >= STEPS.length;
+  updateWalk();
+}
+/* Smooth swaps: the browser cross-fades only what changed between two renders. */
+let booted = false; /* no transition on the first paint, or while the page is hidden */
+function paint() { if (booted && document.startViewTransition && !reduced() && document.visibilityState === "visible") document.startViewTransition(render); else render(); }
+function restartMeter() {
+  const m = $("#meter");
+  m.classList.remove("run");
+  if (!playing || reduced()) return;
+  void m.offsetWidth;
+  m.style.setProperty("--dur", `${dwell(S.step)}ms`);
+  m.classList.add("run");
+}
+function tick() {
+  const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+  set("#cclock", clockNow()); set("#pclock", clockNow().slice(0, 5).replace(/^0/, "")); set("#wt", waited()); set("#wt2", waited());
+}
+function say(msg) { $("#announce").textContent = msg; }
+function goStep(n) {
+  Object.assign(S, { step: n, view: STEPS[n - 1].view, base: Date.now(), tried: false, done: false, held: false, guardWait: null, clip: null });
+  paint(); restartMeter(); say(`${STEPS[n - 1].t}. ${txt(STEPS[n - 1])[0]}. ${txt(STEPS[n - 1])[1]}`);
+}
+function schedule() {
+  clearTimeout(playTimer);
+  if (playing) playTimer = setTimeout(() => { if (S.step >= DEMO_STEPS) { setPlaying(false); return; } goStep(S.step + 1); schedule(); }, dwell(S.step));
+}
+function setPlaying(on) {
+  playing = on; clearTimeout(playTimer);
+  if (on) {
+    S.tookOver = false;
+    if (S.step >= DEMO_STEPS) goStep(1);
+    schedule();
+  }
+  render(); restartMeter();
+}
+function takeOver() { if (playing) { S.tookOver = true; setPlaying(false); } } /* any interaction hands control to the judge */
+function locked(b) { return b.getAttribute("aria-disabled") === "true"; }
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-act]");
+  if (!b || b.disabled) return;
+  const [act, arg] = b.dataset.act.split(":");
+  const sc = st();
+  if (!["play", "lang"].includes(act)) takeOver();
+  switch (act) {
+    case "play": setPlaying(!playing); return;
+    case "prev": goStep(Math.max(1, S.step - 1)); return;
+    case "next": goStep(Math.min(STEPS.length, S.step + 1)); return;
+    case "step":
+      goStep(+arg);
+      if (matchMedia("(max-width: 900px)").matches) /* on phones the screen sits above the list */
+        $("#screen").scrollIntoView({ block: "start", behavior: reduced() ? "auto" : "smooth" });
+      return;
+    case "lang": S.lang = arg; try { localStorage.setItem("mk-lang", arg); } catch (_) { /* remembered language is optional */ } paint(); return;
+    case "view": S.view = arg; paint(); return;
+    case "hold":
+      if (sc.req === "asking") { goStep(3); return; }
+      if (sc.req === "clear" || sc.req === "fa") { if (!S.held) S.held = stamp(2); paint(); say(t("heldState")); return; }
+      say(t("alreadyHeld")); return;
+    case "go":
+    case "setpath":
+      if (locked(b)) { S.tried = true; render(); say(t("tryLocked")); return; } /* a fresh render replays the nudge */
+      if (sc.req === "clear") { goStep(7); return; }
+      if (sc.req === "fa") { S.done = stamp(4); paint(); say(t("faClosed")); return; }
+      return;
+    case "askguard": goStep(4); return;
+    case "gwait": S.guardWait = stamp(5); paint(); say(t("gSentWait")(S.guardWait)); return;
+    case "close": goStep(8); return;
+    case "ground": S.done = stamp(4); paint(); say(t("groundCalled")); return;
+    case "clip": S.clip = S.clip === arg ? null : arg; paint(); return;
+    default: return;
+  }
+});
+/* "Clear" on the guard's phone needs a deliberate 1-second press; a keyboard press (no pointer) counts as deliberate. */
+document.addEventListener("pointerdown", (e) => {
+  const b = e.target.closest("[data-hold]");
+  if (!b) return;
+  takeOver();
+  b.classList.add("holding");
+  holdTimer = setTimeout(() => { holdTimer = null; goStep(5); }, reduced() ? 700 : 1000);
+});
+const cancelHold = () => { if (holdTimer) { clearTimeout(holdTimer); holdTimer = null; document.querySelectorAll(".holding").forEach((b) => b.classList.remove("holding")); } };
+document.addEventListener("pointerup", cancelHold);
+document.addEventListener("pointercancel", cancelHold);
+document.addEventListener("pointerleave", cancelHold);
+document.addEventListener("click", (e) => { const b = e.target.closest("[data-hold]"); if (b && e.detail === 0) { takeOver(); goStep(5); } });
+document.addEventListener("change", (e) => {
+  takeOver();
+  if (e.target.dataset.change === "filter") { S.filter = e.target.value; paint(); }
+  if (e.target.dataset.label != null) { S.labels[+e.target.dataset.label] = e.target.checked; }
+});
+document.addEventListener("keydown", (e) => { /* arrow keys step through the run when focus isn't in a form control */
+  if (e.altKey || e.ctrlKey || e.metaKey || /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+  if (e.key === "ArrowRight" && S.step < STEPS.length) { takeOver(); goStep(S.step + 1); }
+  if (e.key === "ArrowLeft" && S.step > 1) { takeOver(); goStep(S.step - 1); }
+});
+addEventListener("resize", updateWalk);
+try { const l = localStorage.getItem("mk-lang"); if (l === "en" || l === "bm") S.lang = l; } catch (_) { /* storage may be blocked */ }
+const linked = /^#(shot-)?step(\d+)$/.exec(location.hash); /* #step6 opens that step, paused, for links from the deck */
+if (linked && +linked[2] >= 1 && +linked[2] <= STEPS.length) { if (linked[1]) document.documentElement.classList.add("shotmode"); goStep(+linked[2]); }
+else { render(); setPlaying(true); } /* otherwise the simulation starts on its own; any click hands control to the judge */
+booted = true;
+setInterval(tick, 1000);
+document.fonts?.ready.then(updateWalk);
+</script>
+
+</body>
+</html>

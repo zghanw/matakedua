@@ -1,0 +1,14 @@
+# Only the deliverables belong here: the prototype, README, deck, research and screenshots.
+# Dev docs and tools stay in the project folder outside this repo.
+.impeccable/
+.playwright-mcp/
+.claude/
+PRODUCT.md
+DESIGN.md
+DESIGN*.json
+*.py
+__pycache__/
+node_modules/
+*.log
+Thumbs.db
+.DS_Store
